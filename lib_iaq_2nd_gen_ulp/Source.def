@@ -1,0 +1,5 @@
+LIBRARY
+
+EXPORTS
+	init_iaq_2nd_gen_ulp
+	calc_iaq_2nd_gen_ulp

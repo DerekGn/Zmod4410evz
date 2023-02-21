@@ -1,0 +1,5 @@
+LIBRARY
+
+EXPORTS
+   calc_rel_iaq
+   init_rel_iaq  
