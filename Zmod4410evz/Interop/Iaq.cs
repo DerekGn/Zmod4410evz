@@ -29,14 +29,28 @@ namespace Zmod4410evz.Interop
 {
     public static class Iaq
     {
-        [DllImport("lib_iaq_2nd_gen")]
-        extern static Zmod4xxxError Init(ref IaqHandle handle);
+        internal static IaqError Calc(
+            ref IaqHandle handle,
+            ref Zmod4xxxDevice device,
+            ref IaqInputs input,
+            ref IaqResults results)
+        {
+            return calc_iaq_2nd_gen(ref handle, ref device, ref input, ref results);
+        }
+
+        internal static IaqError Init(ref IaqHandle handle)
+        {
+            return init_iaq_2nd_gen(ref handle);
+        }
 
         [DllImport("lib_iaq_2nd_gen")]
-        extern static Zmod4xxxError Calc(
+        extern static IaqError calc_iaq_2nd_gen(
             ref IaqHandle handle,
             ref Zmod4xxxDevice device,
             ref IaqInputs input,
             ref IaqResults results);
+
+        [DllImport("lib_iaq_2nd_gen")]
+        extern static IaqError init_iaq_2nd_gen(ref IaqHandle handle);
     }
 }

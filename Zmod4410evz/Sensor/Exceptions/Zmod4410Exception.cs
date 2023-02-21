@@ -25,7 +25,7 @@
 namespace Zmod4410evz.Sensor.Exceptions
 {
 
-	[Serializable]
+    [Serializable]
 	public class Zmod4410Exception : Exception
 	{
 		public Zmod4410Exception(Zmod4xxxError errorCode) : this(errorCode, String.Empty) { }

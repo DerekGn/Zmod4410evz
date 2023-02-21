@@ -2,6 +2,7 @@
 {
     public enum Zmod4xxxError
     {
+        None = 0,
         /// <summary>
         /// The initialization value is out of range.
         /// </summary>

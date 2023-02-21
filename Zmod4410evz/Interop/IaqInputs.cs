@@ -22,9 +22,25 @@
 * SOFTWARE.
 */
 
+using System.Runtime.InteropServices;
+
 namespace Zmod4410evz
 {
+    [StructLayout(LayoutKind.Sequential)]
     internal struct IaqInputs
     {
+        /// <summary>
+        /// Sensor raw values
+        /// </summary>
+        [MarshalAs(UnmanagedType.LPArray)]
+        public Byte[] AdcResult;
+        /// <summary>
+        /// Relative Humditiy in percentage
+        /// </summary>
+        public float HumidityPct;
+        /// <summary>
+        /// Ambient Temperature in C
+        /// </summary>
+        public float TemperatureDegc;
     }
 }

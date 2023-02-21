@@ -41,7 +41,7 @@ namespace Zmod4410evz.Interop
 
         public byte Address;
         public byte Length;
-        [MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U1)]
+        [MarshalAs(UnmanagedType.ByValArray, ArraySubType = UnmanagedType.U1)]
         public byte[] Buffer;
     }
 }

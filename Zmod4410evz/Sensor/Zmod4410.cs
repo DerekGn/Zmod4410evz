@@ -46,6 +46,24 @@ namespace Zmod4410evz.Sensor
                         new Zmod4xxxDevice.Zmod4xxxDelay(Delay));
         }
 
+        public Zmod4xxxDevice GetDevice()
+        {
+            return _zmod4XxxDevice;
+        }
+
+        public ErrorEvent GetErrorEvent()
+        {
+            var buffer = new byte[1];
+
+            _zmod4XxxDevice.I2cRead(
+                _zmod4XxxDevice.I2cAddr,
+                0xB7,
+                buffer,
+                1);
+
+            return (ErrorEvent)buffer[0];
+        }
+
         public void GetInformation()
         {
             byte status = 0;
@@ -125,6 +143,26 @@ namespace Zmod4410evz.Sensor
             InitMeasurement();
         }
 
+        public IReadOnlyList<byte> ReadAdc()
+        {
+            var buffer = new byte[_zmod4XxxDevice.MeasurementConfiguration.r.Length];
+
+            _zmod4XxxDevice.I2cRead(
+                _zmod4XxxDevice.I2cAddr,
+                _zmod4XxxDevice.MeasurementConfiguration.r.Address,
+                buffer,
+                _zmod4XxxDevice.MeasurementConfiguration.r.Length);
+
+            return buffer;
+        }
+
+        public void StartMeasurement()
+        {
+            _zmod4XxxDevice.I2cWrite(
+                _zmod4XxxDevice.I2cAddr, 
+                Zmod44xxI2cRegisters.AddressCommand,
+                new byte[] { _zmod4XxxDevice.MeasurementConfiguration.Start }, 1);
+        }
         private void Delay(uint delay)
         {
             _logger.LogDebug("Executing Delay: {Delay}", delay);
@@ -133,15 +171,60 @@ namespace Zmod4410evz.Sensor
 
         private void InitMeasurement()
         {
-            throw new NotImplementedException();
+            var hsp = new byte[Zmod44xxConstants.HspLength * 2];
+
+            _zmod4XxxDevice.CalculateFactorMeasurementConfig(hsp);
+
+            _zmod4XxxDevice.I2cWrite(
+                _zmod4XxxDevice.I2cAddr,
+                _zmod4XxxDevice.MeasurementConfiguration.h.Address,
+                hsp,
+                _zmod4XxxDevice.MeasurementConfiguration.h.Length);
+
+            WriteConfiguration(_zmod4XxxDevice.MeasurementConfiguration);
         }
 
         private void InitSensor()
         {
-            var buffer = new byte[32];
+            var buffer = new byte[Zmod44xxConstants.ResultMax];
             var hsp = new byte[Zmod44xxConstants.HspLength * 2];
 
             _zmod4XxxDevice.I2cRead(_zmod4XxxDevice.I2cAddr, 0xB7, buffer, 1);
+
+            _zmod4XxxDevice.CalculateFactorInitConfig(hsp);
+
+            _zmod4XxxDevice.I2cWrite(
+                _zmod4XxxDevice.I2cAddr,
+                _zmod4XxxDevice.InitConfiguration.h.Address,
+                hsp,
+                _zmod4XxxDevice.InitConfiguration.h.Length);
+
+            WriteConfiguration(_zmod4XxxDevice.InitConfiguration);
+
+            _zmod4XxxDevice.I2cWrite(
+                _zmod4XxxDevice.I2cAddr,
+                Zmod44xxI2cRegisters.AddressCommand,
+                new byte[] { _zmod4XxxDevice.InitConfiguration.Start },
+                1);
+
+            byte status;
+
+            do
+            {
+                status = GetStatus();
+
+                _zmod4XxxDevice.Delay(50);
+            } while ((status & Zmod4410Status.SequencerRunningMask) == Zmod4410Status.SequencerRunningMask);
+
+
+            _zmod4XxxDevice.I2cRead(
+                _zmod4XxxDevice.I2cAddr,
+                _zmod4XxxDevice.InitConfiguration.r.Address,
+                buffer,
+                _zmod4XxxDevice.InitConfiguration.r.Length);
+
+            _zmod4XxxDevice.MoxLr = (ushort)((buffer[0] << 8) | buffer[1]);
+            _zmod4XxxDevice.MoxEr = (ushort)((buffer[2] << 8) | buffer[3]);
         }
 
         private byte Read(byte address, byte regAddress, byte[] buffer, byte count)
@@ -164,11 +247,33 @@ namespace Zmod4410evz.Sensor
             {
                 regAddress
             };
-            payload.AddRange(buffer);
+            
+            payload.AddRange(buffer.Take(count));
 
             _device.I2cWriteData(new I2cAddress(address), payload);
 
             return 0;
+        }
+
+        private void WriteConfiguration(Zmod4xxxConfiguration configuration)
+        {
+            _zmod4XxxDevice.I2cWrite(
+                _zmod4XxxDevice.I2cAddr,
+                configuration.d.Address,
+                configuration.d.Buffer,
+                configuration.d.Length);
+
+            _zmod4XxxDevice.I2cWrite(
+                _zmod4XxxDevice.I2cAddr,
+                configuration.m.Address,
+                configuration.m.Buffer,
+                configuration.m.Length);
+
+            _zmod4XxxDevice.I2cWrite(
+                _zmod4XxxDevice.I2cAddr,
+                configuration.s.Address,
+                configuration.s.Buffer,
+                configuration.s.Length);
         }
         #region Dispose
 
@@ -195,6 +300,8 @@ namespace Zmod4410evz.Sensor
                 disposedValue = true;
             }
         }
+
+        
         #endregion Dispose
     }
 }

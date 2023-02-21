@@ -22,52 +22,13 @@
 * SOFTWARE.
 */
 
-using Zmod4410evz.Interop;
-
 namespace Zmod4410evz.Sensor
 {
-    internal interface IZmod4410 : IDisposable
+    [Flags]
+    public enum ErrorEvent
     {
-        ErrorEvent GetErrorEvent();
-
-        /// <summary>
-        /// Read the sensor information
-        /// </summary>
-        /// <remarks></remarks>
-        void GetInformation();
-
-        /// <summary>
-        /// Read the sensor status
-        /// </summary>
-        /// <returns></returns>
-        byte GetStatus();
-
-        /// <summary>
-        /// Read the tracking number
-        /// </summary>
-        /// <returns>The tracking number bytes</returns>
-        IReadOnlyList<byte> GetTrackingNumber();
-
-        /// <summary>
-        /// Read the sensors trimming data
-        /// </summary>
-        /// <returns></returns>
-        IReadOnlyList<byte> GetTrimingData();
-
-        //void ExecuteCleaning();
-
-        /// <summary>
-        /// Prepare the sensor calibration factors
-        /// </summary>
-        void PrepareSensor();
-
-        IReadOnlyList<byte> ReadAdc();
-
-        /// <summary>
-        /// Start a measurement
-        /// </summary>
-        void StartMeasurement();
-
-        Zmod4xxxDevice GetDevice();
+        None = 0,
+        PowerOn = 0x80,
+        AccessConflict = 0x40
     }
 }

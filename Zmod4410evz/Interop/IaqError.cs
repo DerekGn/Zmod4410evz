@@ -22,52 +22,24 @@
 * SOFTWARE.
 */
 
-using Zmod4410evz.Interop;
-
-namespace Zmod4410evz.Sensor
+namespace Zmod4410evz.Interop
 {
-    internal interface IZmod4410 : IDisposable
+    /// <summary>
+    /// Return codes of the algorithm functions.
+    /// </summary>
+    internal enum IaqError
     {
-        ErrorEvent GetErrorEvent();
-
         /// <summary>
-        /// Read the sensor information
+        /// No error
         /// </summary>
-        /// <remarks></remarks>
-        void GetInformation();
-
+        OK =0,
         /// <summary>
-        /// Read the sensor status
+        /// Sensor in stabilization
         /// </summary>
-        /// <returns></returns>
-        byte GetStatus();
-
+        Stabilization = 1,
         /// <summary>
-        /// Read the tracking number
+        /// Sensor damaged
         /// </summary>
-        /// <returns>The tracking number bytes</returns>
-        IReadOnlyList<byte> GetTrackingNumber();
-
-        /// <summary>
-        /// Read the sensors trimming data
-        /// </summary>
-        /// <returns></returns>
-        IReadOnlyList<byte> GetTrimingData();
-
-        //void ExecuteCleaning();
-
-        /// <summary>
-        /// Prepare the sensor calibration factors
-        /// </summary>
-        void PrepareSensor();
-
-        IReadOnlyList<byte> ReadAdc();
-
-        /// <summary>
-        /// Start a measurement
-        /// </summary>
-        void StartMeasurement();
-
-        Zmod4xxxDevice GetDevice();
+        Damage = -102
     }
 }

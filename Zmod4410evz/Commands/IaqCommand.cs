@@ -24,6 +24,7 @@
 
 using McMaster.Extensions.CommandLineUtils;
 using Zmod4410evz.Interop;
+using Zmod4410evz.Sensor;
 
 namespace Zmod4410evz.Commands
 {
@@ -31,6 +32,8 @@ namespace Zmod4410evz.Commands
     [Subcommand(typeof(IaqUlpCommand))]
     internal class IaqCommand : BaseCommand
     {
+        private const int Interval = 3000;
+
         public IaqCommand(IServiceProvider serviceProvider) : base(serviceProvider)
         {
         }
@@ -56,6 +59,97 @@ namespace Zmod4410evz.Commands
                 Console.WriteLine("Preparing Sensor");
 
                 sensor.PrepareSensor();
+
+#warning todo init
+                IaqHandle algoHandle = new()
+                {
+                    LogRcda = new float[9]
+                };
+
+                IaqResults algoResults = new();
+                IaqInputs algoInput = new();
+
+                var result = Iaq.Init(ref algoHandle);
+
+                if(result != IaqError.OK)
+                {
+                    console.Error.WriteLine("Library Initialise failed");
+                }
+
+                console.WriteLine($"Starting Measurement Loop. Sensor Read every {Interval / 1000} Seconds");
+
+                do
+                {
+                    sensor.StartMeasurement();
+
+                    Thread.Sleep(Interval);
+
+                    var status = sensor.GetStatus();
+
+                    ErrorEvent errorEvent;
+
+                    if((status & Zmod4410Status.SequencerRunningMask) == Zmod4410Status.SequencerRunningMask)
+                    {
+                        console.WriteLine("Sequencer still running");
+
+                        errorEvent = sensor.GetErrorEvent();
+#warning TODO handle error
+                        switch (errorEvent)
+                        {
+                            case ErrorEvent.None:
+                                break;
+                            case ErrorEvent.PowerOn:
+                                break;
+                            case ErrorEvent.AccessConflict:
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+
+                    console.WriteLine("Reading Adc");
+
+                    algoInput.AdcResult = sensor.ReadAdc().ToArray();
+
+#warning TODO handle error
+                    errorEvent = sensor.GetErrorEvent();
+
+                    algoInput.HumidityPct = 50.0f;
+                    algoInput.TemperatureDegc = 20.0f;
+
+                    var device = sensor.GetDevice();
+
+                    result = Iaq.Calc(ref algoHandle, ref device, ref algoInput, ref algoResults);
+
+                    console.WriteLine("*********** Measurements ***********");
+                    for (int i = 0; i < 13; i++)
+                    {
+                        console.WriteLine($" Rmox[{i}] = {algoResults.Rmox[i] / 1e3} kOhm", i);
+                    }
+                    console.WriteLine($" Rcda = {(Math.Pow(10, algoResults.LogRcda) / 1e3)} kOhm");
+                    console.WriteLine($" EtOH = {algoResults.Etoh} ppm");
+                    console.WriteLine($" TVOC = {algoResults.Tvoc} mg/m^3");
+                    console.WriteLine($" eCO2 = {algoResults.Eco2} ppm");
+                    console.WriteLine($" IAQ  = {algoResults.Iaq}");
+
+                    /* Check validity of the algorithm results. */
+                    switch (result)
+                    {
+                        case IaqError.Stabilization:
+                            console.WriteLine("Warm-Up!");
+                            break;
+                        case IaqError.OK:
+                            console.WriteLine("Valid!");
+                            break;
+                        case IaqError.Damage:
+                            console.WriteLine("Error: Sensor probably damaged. Algorithm results may be incorrect.");
+                            break;
+                        default:
+                            console.WriteLine("Unexpected Error during algorithm calculation: Exiting Program.");
+                            break;
+                    }
+
+                } while (!Console.KeyAvailable);
 
                 return 0;
             });

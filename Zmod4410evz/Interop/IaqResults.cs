@@ -26,21 +26,44 @@ using System.Runtime.InteropServices;
 
 namespace Zmod4410evz
 {
+    /// <summary>
+    /// Variables that receive the algorithm outputs.
+    /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal struct IaqResults
     {
         /// <summary>
-        /// Sensor raw values
+        /// MOx resistance.
         /// </summary>
-        [MarshalAs(UnmanagedType.LPArray)]
-        public Byte[] AdcResult;
+        [MarshalAs(UnmanagedType.ByValArray, ArraySubType = UnmanagedType.U1, SizeConst = 13)]
+        public float[] Rmox;
         /// <summary>
-        /// Relative Humditiy in percentage
+        /// Log10 of CDA resistance.
         /// </summary>
-        public float HumidityPct;
+        public float LogRcda;
         /// <summary>
-        /// Ambient Temperature in C
+        /// Heater resistance.
         /// </summary>
-        public float TemperatureDegc;
+        public float Rhtr;
+        /// <summary>
+        /// Ambient temperature (degC).
+        /// </summary>
+        public float Temperature;
+        /// <summary>
+        /// IAQ index.
+        /// </summary>
+        public float Iaq;
+        /// <summary>
+        /// TVOC concentration (mg/m^3).
+        /// </summary>
+        public float Tvoc;
+        /// <summary>
+        /// EtOH concentration (ppm).
+        /// </summary>
+        public float Etoh;
+        /// <summary>
+        /// eCO2 concentration (ppm).
+        /// </summary>
+        public float Eco2;
     }
 }
