@@ -68,6 +68,7 @@ namespace Zmod4410evz.Commands
                 else
                 {
                     console.WriteLine($"Starting Measurement Loop. Sensor Read every [{Interval / 1000}] Seconds. Press any key to exit");
+                    bool exit = false;
 
                     do
                     {
@@ -84,62 +85,71 @@ namespace Zmod4410evz.Commands
                             console.WriteLine("Sequencer still running");
 
                             errorEvent = sensor.GetErrorEvent();
-#warning TODO handle error
+
                             switch (errorEvent)
                             {
-                                case ErrorEvent.None:
-                                    break;
                                 case ErrorEvent.PowerOn:
+                                    console.Error.WriteLine("Measurement completion fault. Unexpected sensor reset");
+                                    exit = true;
                                     break;
                                 case ErrorEvent.AccessConflict:
-                                    break;
-                                default:
+                                    console.Error.WriteLine("Measurement completion fault. Wrong sensor setup.");
+                                    exit = true;
                                     break;
                             }
                         }
-
-                        console.WriteLine("Reading Adc");
-
-                        var adc = sensor.ReadAdc();
-
-                        algoInput.AssignAdcResult(adc.ToArray());
-
-#warning TODO handle error
-                        //errorEvent = sensor.GetErrorEvent();
-
-                        Zmod4xxxDevice device = sensor.ToMarshalType();                        
-
-                        result = Iaq.Calc(ref algoHandle, ref device, ref algoInput, ref algoResults);
-
-                        console.WriteLine("*********** Measurements ***********");
-                        for (int i = 0; i < 13; i++)
+                        else
                         {
-                            console.WriteLine($" Rmox[{i}] = {algoResults.Rmox[i] / 1e3} kOhm", i);
-                        }
-                        console.WriteLine($" Rcda = {(Math.Pow(10, algoResults.LogRcda) / 1e3)} kOhm");
-                        console.WriteLine($" EtOH = {algoResults.Etoh} ppm");
-                        console.WriteLine($" TVOC = {algoResults.Tvoc} mg/m^3");
-                        console.WriteLine($" eCO2 = {algoResults.Eco2} ppm");
-                        console.WriteLine($" IAQ  = {algoResults.Iaq}");
+                            console.WriteLine("Reading Adc");
 
-                        /* Check validity of the algorithm results. */
-                        switch (result)
-                        {
-                            case IaqError.Stabilization:
-                                console.WriteLine("Warm-Up!");
-                                break;
-                            case IaqError.OK:
-                                console.WriteLine("Valid!");
-                                break;
-                            case IaqError.Damage:
-                                console.WriteLine("Error: Sensor probably damaged. Algorithm results may be incorrect.");
-                                break;
-                            default:
-                                console.WriteLine("Unexpected Error during algorithm calculation: Exiting Program.");
-                                break;
+                            var adc = sensor.ReadAdc();
+
+                            algoInput.AssignAdcResult(adc.ToArray());
+
+                            errorEvent = sensor.GetErrorEvent();
+
+                            if(errorEvent == ErrorEvent.None)
+                            {
+                                Zmod4xxxDevice device = sensor.ToMarshalType();
+
+                                result = Iaq.Calc(ref algoHandle, ref device, ref algoInput, ref algoResults);
+
+                                console.WriteLine("*********** Measurements ***********");
+                                for (int i = 0; i < 13; i++)
+                                {
+                                    console.WriteLine($" Rmox[{i}] = {algoResults.Rmox[i] / 1e3} kOhm", i);
+                                }
+                                console.WriteLine($" Rcda = {(Math.Pow(10, algoResults.LogRcda) / 1e3)} kOhm");
+                                console.WriteLine($" EtOH = {algoResults.Etoh} ppm");
+                                console.WriteLine($" TVOC = {algoResults.Tvoc} mg/m^3");
+                                console.WriteLine($" eCO2 = {algoResults.Eco2} ppm");
+                                console.WriteLine($" IAQ  = {algoResults.Iaq}");
+
+                                /* Check validity of the algorithm results. */
+                                switch (result)
+                                {
+                                    case IaqError.Stabilization:
+                                        console.WriteLine("Warm-Up!");
+                                        break;
+                                    case IaqError.OK:
+                                        console.WriteLine("Valid!");
+                                        break;
+                                    case IaqError.Damage:
+                                        console.WriteLine("Error: Sensor probably damaged. Algorithm results may be incorrect.");
+                                        break;
+                                    default:
+                                        console.WriteLine("Unexpected Error during algorithm calculation: Exiting Program.");
+                                        break;
+                                }
+                            }
+                            else
+                            {
+                                console.Error.WriteLine($"Error during reading status register [0x{errorEvent:X}]");
+                                exit = true;
+                            }
                         }
 
-                    } while (!Console.KeyAvailable);
+                    } while (!Console.KeyAvailable && !exit);
                 }
 
                 return 0;
