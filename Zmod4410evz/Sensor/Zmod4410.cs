@@ -167,13 +167,13 @@ namespace Zmod4410evz.Sensor
             _configuration.Clear();
             _configuration.AddRange(buffer);
 
-            buffer = new byte[Zmod44xxConstants.ProductionDataLength];
+            buffer = new byte[_measurementConfiguration.ProductDataLength];
 
             I2cRead(
                 _address,
                 Zmod44xxI2cRegisters.AddressProdData,
                 buffer,
-                Zmod44xxConstants.ProductionDataLength);
+                _measurementConfiguration.ProductDataLength);
 
             _productionData.Clear();
             _productionData.AddRange(buffer);
@@ -251,8 +251,8 @@ namespace Zmod4410evz.Sensor
             {
                 hsp_temp[i / 2] = ((short)
                     ((config.H.Buffer[i] << 8) + config.H.Buffer[i + 1]));
-                hspf = (-((float)Configuration[2] * 256.0F + Configuration[3]) *
-                        ((Configuration[4] + 640.0F) * (Configuration[5] + hsp_temp[i / 2]) -
+                hspf = (-((float)_configuration[2] * 256.0F + _configuration[3]) *
+                        ((_configuration[4] + 640.0F) * (_configuration[5] + hsp_temp[i / 2]) -
                          512000.0F)) / 12288000.0F;
 
                 hsp[i] = (byte)((ushort)hspf >> 8);
