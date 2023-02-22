@@ -40,59 +40,5 @@ namespace Zmod4410evz.Interop
         public Zmod4xxxConfigurationString s;
         public Zmod4xxxConfigurationString r;
         public byte ProdDataLength;
-
-        public static Zmod4xxxConfiguration CreateInitConfiguration()
-        {
-            return new Zmod4xxxConfiguration()
-            {
-                Start = 0x80,
-                h = new Zmod4xxxConfigurationString(Zmod44xxConstants.HAddress, new byte[] { 0x00, 0x50 }),
-                d = new Zmod4xxxConfigurationString(Zmod44xxConstants.DAddress, new byte[] { 0x00, 0x28 }),
-                m = new Zmod4xxxConfigurationString(Zmod44xxConstants.MAddress, new byte[] { 0xC3, 0xE3 }),
-                s = new Zmod4xxxConfigurationString(Zmod44xxConstants.SAddress, new byte[] { 0x00, 0x00, 0x80, 0x40 }),
-                r = new Zmod4xxxConfigurationString(Zmod44xxConstants.RAddress, new byte[4])
-            };
-        }
-
-        public static Zmod4xxxConfiguration CreateMeasurementConfiguration()
-        {
-            return new Zmod4xxxConfiguration()
-            {
-                Start = 0x80,
-                h = new Zmod4xxxConfigurationString(Zmod44xxConstants.HAddress, 
-                new byte[]
-                {
-                    0x00, 0x50, 0xFF, 0x38,
-                    0xFE, 0xD4, 0xFE, 0x70,
-                    0xFE, 0x0C, 0xFD, 0xA8,
-                    0xFD, 0x44, 0xFC, 0xE0 
-                }),
-                d = new Zmod4xxxConfigurationString(Zmod44xxConstants.DAddress,
-                new byte[] 
-                {
-                    0x00, 0x52, 0x02, 0x67,
-                    0x00, 0xCD, 0x03, 0x34
-                }),
-                m = new Zmod4xxxConfigurationString(Zmod44xxConstants.MAddress, 
-                new byte[] 
-                { 
-                    0x23, 0x03, 0xA3, 0x43 
-                }),
-                s = new Zmod4xxxConfigurationString(Zmod44xxConstants.SAddress, 
-                new byte[] 
-                {
-                    0x00, 0x00, 0x06, 0x49,
-                    0x06, 0x4A, 0x06, 0x4B,
-                    0x06, 0x4C, 0x06, 0x4D,
-                    0x06, 0x4E, 0x06, 0x97,
-                    0x06, 0xD7, 0x06, 0x57,
-                    0x06, 0x4E, 0x06, 0x4D,
-                    0x06, 0x4C, 0x06, 0x4B,
-                    0x06, 0x4A, 0x86, 0x59
-                }),
-                r = new Zmod4xxxConfigurationString(Zmod44xxConstants.RAddress, new byte[32]),
-                ProdDataLength = Zmod44xxConstants.ProductionDataLength
-            };
-        }
     }
 }

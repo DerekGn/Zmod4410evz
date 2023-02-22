@@ -24,42 +24,99 @@
 
 using MCP2221IO;
 using Microsoft.Extensions.Logging;
-using Zmod4410evz.Interop;
 using Zmod4410evz.Sensor.Exceptions;
 
 namespace Zmod4410evz.Sensor
 {
     internal class Zmod4410 : IZmod4410
     {
+        private readonly byte _address;
+        private readonly List<byte> _configuration;
         private readonly ILogger<IZmod4410> _logger;
+        private readonly List<byte> _productionData;
+        private readonly Zmod4410Configuration _initConfiguration;
+        private readonly Zmod4410Configuration _measurementConfiguration;
         private IDevice _device;
-        private Zmod4xxxDevice _zmod4XxxDevice;
+        private ushort _moxEr = 0;
+        private ushort _moxLr = 0;
+
         public Zmod4410(ILogger<IZmod4410> logger, IDevice device, byte address)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _device = device ?? throw new ArgumentNullException(nameof(device));
 
-            _zmod4XxxDevice =
-                    new(address,
-                        new Zmod4xxxDevice.Zmod4xxxI2c(Read),
-                        new Zmod4xxxDevice.Zmod4xxxI2c(Write),
-                        new Zmod4xxxDevice.Zmod4xxxDelay(Delay));
+            _measurementConfiguration =
+                new Zmod4410Configuration(
+                0x80,
+                Zmod44xxConstants.ProductionDataLength,
+                new Zmod4410ConfigurationString(Zmod44xxConstants.HAddress,
+                new List<byte>()
+                {
+                    0x00, 0x50, 0xFF, 0x38,
+                    0xFE, 0xD4, 0xFE, 0x70,
+                    0xFE, 0x0C, 0xFD, 0xA8,
+                    0xFD, 0x44, 0xFC, 0xE0
+                }),
+                new Zmod4410ConfigurationString(Zmod44xxConstants.DAddress,
+                new List<byte>()
+                {
+                    0x00, 0x52, 0x02, 0x67,
+                    0x00, 0xCD, 0x03, 0x34
+                }),
+                new Zmod4410ConfigurationString(Zmod44xxConstants.MAddress,
+                new List<byte>()
+                {
+                    0x23, 0x03, 0xA3, 0x43
+                }),
+                new Zmod4410ConfigurationString(Zmod44xxConstants.SAddress,
+                new List<byte>()
+                {
+                    0x00, 0x00, 0x06, 0x49,
+                    0x06, 0x4A, 0x06, 0x4B,
+                    0x06, 0x4C, 0x06, 0x4D,
+                    0x06, 0x4E, 0x06, 0x97,
+                    0x06, 0xD7, 0x06, 0x57,
+                    0x06, 0x4E, 0x06, 0x4D,
+                    0x06, 0x4C, 0x06, 0x4B,
+                    0x06, 0x4A, 0x86, 0x59
+                }),
+                new Zmod4410ConfigurationString(Zmod44xxConstants.RAddress, (new byte[32]).ToList()));
+
+            _initConfiguration = new Zmod4410Configuration(
+                0x80,
+                0,
+                new Zmod4410ConfigurationString(Zmod44xxConstants.HAddress, new List<byte>() { 0x00, 0x50 }),
+                new Zmod4410ConfigurationString(Zmod44xxConstants.DAddress, new List<byte>() { 0x00, 0x28 }),
+                new Zmod4410ConfigurationString(Zmod44xxConstants.MAddress, new List<byte>() { 0xC3, 0xE3 }),
+                new Zmod4410ConfigurationString(Zmod44xxConstants.SAddress, new List<byte>() { 0x00, 0x00, 0x80, 0x40 }),
+                new Zmod4410ConfigurationString(Zmod44xxConstants.RAddress, (new byte[4]).ToList()));
+
+            _configuration = new List<byte> { };
+            _productionData = new List<byte> { };
+
+            _address = address;
         }
 
-        public Zmod4xxxDevice GetDevice()
-        {
-            return _zmod4XxxDevice;
-        }
+        public IReadOnlyList<byte> Configuration => _configuration;
 
+        public byte I2cAddress => _address;
+
+        public Zmod4410Configuration InitConfiguration => _initConfiguration;
+
+        public Zmod4410Configuration MeasurementConfiguration => _measurementConfiguration;
+
+        public ushort MoxEr => _moxEr;
+
+        public ushort MoxLr => _moxLr;
+
+        public ushort Pid => Zmod44xxConstants.Pid;
+
+        public IReadOnlyList<byte> ProductionData => _productionData;
         public ErrorEvent GetErrorEvent()
         {
             var buffer = new byte[1];
 
-            _zmod4XxxDevice.I2cRead(
-                _zmod4XxxDevice.I2cAddr,
-                0xB7,
-                buffer,
-                1);
+            I2cRead(_address, 0xB7, buffer, 1);
 
             return (ErrorEvent)buffer[0];
         }
@@ -71,11 +128,11 @@ namespace Zmod4410evz.Sensor
 
             do
             {
-                _zmod4XxxDevice.I2cWrite(_zmod4XxxDevice.I2cAddr, Zmod44xxI2cRegisters.AddressCommand, new byte[] { 0 }, 1);
+                I2cWrite(_address, Zmod44xxI2cRegisters.AddressCommand, new byte[] { 0 }, 1);
 
                 status = GetStatus();
 
-                _zmod4XxxDevice.Delay(200);
+                Delay(200);
 
                 count++;
             } while (((status & 0x80) != 0x00) && (count < 1000));
@@ -87,35 +144,45 @@ namespace Zmod4410evz.Sensor
 
             var buffer = new byte[sizeof(ushort)];
 
-            _zmod4XxxDevice.I2cRead(_zmod4XxxDevice.I2cAddr, Zmod44xxI2cRegisters.AddressPid, buffer, sizeof(ushort));
+            I2cRead(_address, Zmod44xxI2cRegisters.AddressPid, buffer, sizeof(ushort));
 
             ushort pid = (ushort)((buffer[0] * 256) + buffer[1]);
 
-            if (_zmod4XxxDevice.Pid != pid)
+            if (Zmod44xxConstants.Pid != pid)
             {
                 throw new Zmod4410Exception(
                     Zmod4xxxError.ErrorSensorUnsupported,
-                    $"Sensor unsupported Expected Pid: 0x{_zmod4XxxDevice.Pid:X} Actual: 0x{pid:X}");
+                    $"Sensor unsupported Expected Pid: 0x{Zmod44xxConstants.Pid:X} Actual: 0x{pid:X}");
             }
 
-            _zmod4XxxDevice.I2cRead(
-                _zmod4XxxDevice.I2cAddr,
+            buffer = new byte[Zmod44xxConstants.ConfigurationLength];
+
+            I2cRead(
+                _address,
                 Zmod44xxI2cRegisters.AddressConf,
-                _zmod4XxxDevice.Configuration,
+                buffer,
                 Zmod44xxConstants.ConfigurationLength);
 
-            _zmod4XxxDevice.I2cRead(
-                _zmod4XxxDevice.I2cAddr,
+            _configuration.Clear();
+            _configuration.AddRange(buffer);
+
+            buffer = new byte[Zmod44xxConstants.ProductionDataLength];
+
+            I2cRead(
+                _address,
                 Zmod44xxI2cRegisters.AddressProdData,
-                _zmod4XxxDevice.ProductionData,
+                buffer,
                 Zmod44xxConstants.ProductionDataLength);
+
+            _productionData.Clear();
+            _productionData.AddRange(buffer);
         }
 
         public byte GetStatus()
         {
             byte[] buffer = new byte[1];
 
-            _zmod4XxxDevice.I2cRead(_zmod4XxxDevice.I2cAddr, Zmod44xxI2cRegisters.AddressStatus, buffer, 1);
+            I2cRead(_address, Zmod44xxI2cRegisters.AddressStatus, buffer, 1);
 
             return buffer[0];
         }
@@ -124,110 +191,75 @@ namespace Zmod4410evz.Sensor
         {
             var buffer = new byte[Zmod44xxConstants.TrackingNumberLength];
 
-            _zmod4XxxDevice.I2cRead(_zmod4XxxDevice.I2cAddr, Zmod44xxI2cRegisters.AddressTracking, buffer, Zmod44xxConstants.TrackingNumberLength);
+            I2cRead(_address, Zmod44xxI2cRegisters.AddressTracking, buffer, Zmod44xxConstants.TrackingNumberLength);
 
             return buffer;
-        }
-
-        public IReadOnlyList<byte> GetTrimingData()
-        {
-            return _zmod4XxxDevice.ProductionData;
         }
 
         public void PrepareSensor()
         {
             InitSensor();
 
-            _zmod4XxxDevice.Delay(50);
+            Delay(50);
 
             InitMeasurement();
         }
 
         public IReadOnlyList<byte> ReadAdc()
         {
-            var buffer = new byte[_zmod4XxxDevice.MeasurementConfiguration.r.Length];
+            var buffer = new byte[MeasurementConfiguration.R.Length];
 
-            _zmod4XxxDevice.I2cRead(
-                _zmod4XxxDevice.I2cAddr,
-                _zmod4XxxDevice.MeasurementConfiguration.r.Address,
+            I2cRead(
+                _address,
+                _measurementConfiguration.R.Address,
                 buffer,
-                _zmod4XxxDevice.MeasurementConfiguration.r.Length);
+                _measurementConfiguration.R.Length);
 
             return buffer;
         }
 
         public void StartMeasurement()
         {
-            _zmod4XxxDevice.I2cWrite(
-                _zmod4XxxDevice.I2cAddr, 
+            I2cWrite(
+                _address,
                 Zmod44xxI2cRegisters.AddressCommand,
-                new byte[] { _zmod4XxxDevice.MeasurementConfiguration.Start }, 1);
+                new byte[] { _measurementConfiguration.Start }, 1);
         }
+        internal void CalculateFactorInitConfig(byte[] hsp)
+        {
+            CalculateFactor(_initConfiguration, hsp);
+        }
+
+        internal void CalculateFactorMeasurementConfig(byte[] hsp)
+        {
+            CalculateFactor(_measurementConfiguration, hsp);
+        }
+
+        private void CalculateFactor(Zmod4410Configuration config, byte[] hsp)
+        {
+            short[] hsp_temp = new short[Zmod44xxConstants.HspLength];
+            float hspf;
+
+            for (int i = 0; i < config.H.Length; i += 2)
+            {
+                hsp_temp[i / 2] = ((short)
+                    ((config.H.Buffer[i] << 8) + config.H.Buffer[i + 1]));
+                hspf = (-((float)Configuration[2] * 256.0F + Configuration[3]) *
+                        ((Configuration[4] + 640.0F) * (Configuration[5] + hsp_temp[i / 2]) -
+                         512000.0F)) / 12288000.0F;
+
+                hsp[i] = (byte)((ushort)hspf >> 8);
+                hsp[i + 1] = (byte)((ushort)hspf & 0x00FF);
+            }
+        }
+
         private void Delay(uint delay)
         {
             _logger.LogDebug("Executing Delay: {Delay}", delay);
             Thread.Sleep((int)delay);
         }
 
-        private void InitMeasurement()
-        {
-            var hsp = new byte[Zmod44xxConstants.HspLength * 2];
-
-            _zmod4XxxDevice.CalculateFactorMeasurementConfig(hsp);
-
-            _zmod4XxxDevice.I2cWrite(
-                _zmod4XxxDevice.I2cAddr,
-                _zmod4XxxDevice.MeasurementConfiguration.h.Address,
-                hsp,
-                _zmod4XxxDevice.MeasurementConfiguration.h.Length);
-
-            WriteConfiguration(_zmod4XxxDevice.MeasurementConfiguration);
-        }
-
-        private void InitSensor()
-        {
-            var buffer = new byte[Zmod44xxConstants.ResultMax];
-            var hsp = new byte[Zmod44xxConstants.HspLength * 2];
-
-            _zmod4XxxDevice.I2cRead(_zmod4XxxDevice.I2cAddr, 0xB7, buffer, 1);
-
-            _zmod4XxxDevice.CalculateFactorInitConfig(hsp);
-
-            _zmod4XxxDevice.I2cWrite(
-                _zmod4XxxDevice.I2cAddr,
-                _zmod4XxxDevice.InitConfiguration.h.Address,
-                hsp,
-                _zmod4XxxDevice.InitConfiguration.h.Length);
-
-            WriteConfiguration(_zmod4XxxDevice.InitConfiguration);
-
-            _zmod4XxxDevice.I2cWrite(
-                _zmod4XxxDevice.I2cAddr,
-                Zmod44xxI2cRegisters.AddressCommand,
-                new byte[] { _zmod4XxxDevice.InitConfiguration.Start },
-                1);
-
-            byte status;
-
-            do
-            {
-                status = GetStatus();
-
-                _zmod4XxxDevice.Delay(50);
-            } while ((status & Zmod4410Status.SequencerRunningMask) == Zmod4410Status.SequencerRunningMask);
-
-
-            _zmod4XxxDevice.I2cRead(
-                _zmod4XxxDevice.I2cAddr,
-                _zmod4XxxDevice.InitConfiguration.r.Address,
-                buffer,
-                _zmod4XxxDevice.InitConfiguration.r.Length);
-
-            _zmod4XxxDevice.MoxLr = (ushort)((buffer[0] << 8) | buffer[1]);
-            _zmod4XxxDevice.MoxEr = (ushort)((buffer[2] << 8) | buffer[3]);
-        }
-
-        private byte Read(byte address, byte regAddress, byte[] buffer, byte count)
+        private byte I2cRead(byte address, byte regAddress, byte[] buffer, byte count)
         {
             _logger.LogDebug("Executing Read Address: [0x{Address:X}] RegAddress: [0x{RegAddress:X}] Length: [0x{Count:X}]", address, regAddress, count);
             var i2cAddress = new I2cAddress(address);
@@ -239,7 +271,7 @@ namespace Zmod4410evz.Sensor
             return 0;
         }
 
-        private byte Write(byte address, byte regAddress, byte[] buffer, byte count)
+        private byte I2cWrite(byte address, byte regAddress, byte[] buffer, byte count)
         {
             _logger.LogDebug("Executing Write Address: [0x{Address:X}] RegAddress: [0x{RegAddress:X}] Length: [0x{Count:X}]", address, regAddress, count);
 
@@ -247,7 +279,7 @@ namespace Zmod4410evz.Sensor
             {
                 regAddress
             };
-            
+
             payload.AddRange(buffer.Take(count));
 
             _device.I2cWriteData(new I2cAddress(address), payload);
@@ -255,53 +287,111 @@ namespace Zmod4410evz.Sensor
             return 0;
         }
 
-        private void WriteConfiguration(Zmod4xxxConfiguration configuration)
+        private void InitMeasurement()
         {
-            _zmod4XxxDevice.I2cWrite(
-                _zmod4XxxDevice.I2cAddr,
-                configuration.d.Address,
-                configuration.d.Buffer,
-                configuration.d.Length);
+            var hsp = new byte[Zmod44xxConstants.HspLength * 2];
 
-            _zmod4XxxDevice.I2cWrite(
-                _zmod4XxxDevice.I2cAddr,
-                configuration.m.Address,
-                configuration.m.Buffer,
-                configuration.m.Length);
+            CalculateFactorMeasurementConfig(hsp);
 
-            _zmod4XxxDevice.I2cWrite(
-                _zmod4XxxDevice.I2cAddr,
-                configuration.s.Address,
-                configuration.s.Buffer,
-                configuration.s.Length);
+            I2cWrite(
+                _address,
+                _measurementConfiguration.H.Address,
+                hsp,
+                _measurementConfiguration.H.Length);
+
+            WriteConfiguration(_measurementConfiguration);
         }
+
+        private void InitSensor()
+        {
+            var buffer = new byte[Zmod44xxConstants.ResultMax];
+            var hsp = new byte[Zmod44xxConstants.HspLength * 2];
+
+            I2cRead(_address, 0xB7, buffer, 1);
+
+            CalculateFactorInitConfig(hsp);
+
+            I2cWrite(
+                _address,
+                _initConfiguration.H.Address,
+                hsp,
+                _initConfiguration.H.Length);
+
+            WriteConfiguration(InitConfiguration);
+
+            I2cWrite(
+                _address,
+                Zmod44xxI2cRegisters.AddressCommand,
+                new byte[] { _initConfiguration.Start },
+                1);
+
+            byte status;
+
+            do
+            {
+                status = GetStatus();
+
+                Delay(50);
+            } while ((status & Zmod4410Status.SequencerRunningMask) == Zmod4410Status.SequencerRunningMask);
+
+
+            I2cRead(
+                _address,
+                _initConfiguration.R.Address,
+                buffer,
+                _initConfiguration.R.Length);
+
+            _moxLr = (ushort)((buffer[0] << 8) | buffer[1]);
+            _moxEr = (ushort)((buffer[2] << 8) | buffer[3]);
+        }
+        private void WriteConfiguration(Zmod4410Configuration configuration)
+        {
+            I2cWrite(
+                _address,
+                configuration.D.Address,
+                configuration.D.Buffer.ToArray(),
+                configuration.D.Length);
+
+            I2cWrite(
+                _address,
+                configuration.M.Address,
+                configuration.M.Buffer.ToArray(),
+                configuration.M.Length);
+
+            I2cWrite(
+                _address,
+                configuration.S.Address,
+                configuration.S.Buffer.ToArray(),
+                configuration.S.Length);
+        }
+    
         #region Dispose
 
-        private bool disposedValue;
+    private bool disposedValue;
 
-        public void Dispose()
+    public void Dispose()
+    {
+        // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+        Dispose(disposing: true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        _logger.LogDebug($"Disposing {nameof(Zmod4410)}");
+
+        if (!disposedValue)
         {
-            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
-        }
-
-        protected virtual void Dispose(bool disposing)
-        {
-            _logger.LogDebug($"Disposing {nameof(Zmod4410)}");
-
-            if (!disposedValue)
+            if (disposing)
             {
-                if (disposing)
-                {
-                    _device = null;
-                }
-
-                disposedValue = true;
+                _device = null;
             }
-        }
 
-        
-        #endregion Dispose
+            disposedValue = true;
+        }
+    }
+
+
+    #endregion Dispose
     }
 }

@@ -28,6 +28,47 @@ namespace Zmod4410evz.Sensor
 {
     internal interface IZmod4410 : IDisposable
     {
+        /// <summary>
+        /// Configuration parameter set
+        /// </summary>
+        IReadOnlyList<byte> Configuration { get; }
+
+        /// <summary>
+        /// The I2C Address of the device
+        /// </summary>
+        byte I2cAddress { get; }
+
+        /// <summary>
+        /// The init configuration
+        /// </summary>
+        Zmod4410Configuration InitConfiguration { get; }
+
+        /// <summary>
+        /// The measurement configuration
+        /// </summary>
+        Zmod4410Configuration MeasurementConfiguration { get; }
+
+        /// <summary>
+        /// Sensor specific parameter
+        /// </summary>
+        ushort MoxEr { get;  }
+
+        /// <summary>
+        /// Sensor specific parameter
+        /// </summary>
+        ushort MoxLr { get; }
+
+        /// <summary>
+        /// Product id of the sensor
+        /// </summary>
+        ushort Pid { get; }
+
+        IReadOnlyList<byte> ProductionData { get; }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
         ErrorEvent GetErrorEvent();
 
         /// <summary>
@@ -48,12 +89,6 @@ namespace Zmod4410evz.Sensor
         /// <returns>The tracking number bytes</returns>
         IReadOnlyList<byte> GetTrackingNumber();
 
-        /// <summary>
-        /// Read the sensors trimming data
-        /// </summary>
-        /// <returns></returns>
-        IReadOnlyList<byte> GetTrimingData();
-
         //void ExecuteCleaning();
 
         /// <summary>
@@ -67,7 +102,5 @@ namespace Zmod4410evz.Sensor
         /// Start a measurement
         /// </summary>
         void StartMeasurement();
-
-        Zmod4xxxDevice GetDevice();
     }
 }

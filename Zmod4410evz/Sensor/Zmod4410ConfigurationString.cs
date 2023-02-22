@@ -22,18 +22,19 @@
 * SOFTWARE.
 */
 
-using System.Runtime.InteropServices;
-
-namespace Zmod4410evz.Interop
+namespace Zmod4410evz.Sensor
 {
-    /// <summary>
-    /// A single data set for the configuration
-    /// </summary>
-    [StructLayout(LayoutKind.Sequential)]
-    internal struct Zmod4xxxConfigurationString
+    public class Zmod4410ConfigurationString
     {
+        public Zmod4410ConfigurationString(byte address, List<byte> buffer)
+        {
+            Address = address;
+            Length = (byte)buffer.Count;
+            Buffer = buffer;
+        }
+
         public byte Address;
         public byte Length;
-        public IntPtr Buffer;
+        public List<byte> Buffer;
     }
 }

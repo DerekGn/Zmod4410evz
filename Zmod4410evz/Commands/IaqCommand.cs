@@ -52,9 +52,7 @@ namespace Zmod4410evz.Commands
 
                 console.WriteLine($"Sensor tracking number: [{Convert.ToHexString(trackingNumber.ToArray())}]");
 
-                var trimingData = sensor.GetTrimingData();
-
-                console.WriteLine($"Sensor trimming data: [{Convert.ToHexString(trimingData.ToArray())}]");
+                console.WriteLine($"Sensor trimming data: [{Convert.ToHexString(sensor.ProductionData.ToArray())}]");
 
                 Console.WriteLine("Preparing Sensor");
 
@@ -112,42 +110,42 @@ namespace Zmod4410evz.Commands
                     algoInput.AdcResult = sensor.ReadAdc().ToArray();
 
 #warning TODO handle error
-                    errorEvent = sensor.GetErrorEvent();
+                    //errorEvent = sensor.GetErrorEvent();
 
-                    algoInput.HumidityPct = 50.0f;
-                    algoInput.TemperatureDegc = 20.0f;
+                    //algoInput.HumidityPct = 50.0f;
+                    //algoInput.TemperatureDegc = 20.0f;
 
-                    var device = sensor.GetDevice();
+                    ////var device = sensor.GetDevice();
 
-                    result = Iaq.Calc(ref algoHandle, ref device, ref algoInput, ref algoResults);
+                    ////result = Iaq.Calc(ref algoHandle, ref device, ref algoInput, ref algoResults);
 
-                    console.WriteLine("*********** Measurements ***********");
-                    for (int i = 0; i < 13; i++)
-                    {
-                        console.WriteLine($" Rmox[{i}] = {algoResults.Rmox[i] / 1e3} kOhm", i);
-                    }
-                    console.WriteLine($" Rcda = {(Math.Pow(10, algoResults.LogRcda) / 1e3)} kOhm");
-                    console.WriteLine($" EtOH = {algoResults.Etoh} ppm");
-                    console.WriteLine($" TVOC = {algoResults.Tvoc} mg/m^3");
-                    console.WriteLine($" eCO2 = {algoResults.Eco2} ppm");
-                    console.WriteLine($" IAQ  = {algoResults.Iaq}");
+                    //console.WriteLine("*********** Measurements ***********");
+                    //for (int i = 0; i < 13; i++)
+                    //{
+                    //    console.WriteLine($" Rmox[{i}] = {algoResults.Rmox[i] / 1e3} kOhm", i);
+                    //}
+                    //console.WriteLine($" Rcda = {(Math.Pow(10, algoResults.LogRcda) / 1e3)} kOhm");
+                    //console.WriteLine($" EtOH = {algoResults.Etoh} ppm");
+                    //console.WriteLine($" TVOC = {algoResults.Tvoc} mg/m^3");
+                    //console.WriteLine($" eCO2 = {algoResults.Eco2} ppm");
+                    //console.WriteLine($" IAQ  = {algoResults.Iaq}");
 
-                    /* Check validity of the algorithm results. */
-                    switch (result)
-                    {
-                        case IaqError.Stabilization:
-                            console.WriteLine("Warm-Up!");
-                            break;
-                        case IaqError.OK:
-                            console.WriteLine("Valid!");
-                            break;
-                        case IaqError.Damage:
-                            console.WriteLine("Error: Sensor probably damaged. Algorithm results may be incorrect.");
-                            break;
-                        default:
-                            console.WriteLine("Unexpected Error during algorithm calculation: Exiting Program.");
-                            break;
-                    }
+                    ///* Check validity of the algorithm results. */
+                    //switch (result)
+                    //{
+                    //    case IaqError.Stabilization:
+                    //        console.WriteLine("Warm-Up!");
+                    //        break;
+                    //    case IaqError.OK:
+                    //        console.WriteLine("Valid!");
+                    //        break;
+                    //    case IaqError.Damage:
+                    //        console.WriteLine("Error: Sensor probably damaged. Algorithm results may be incorrect.");
+                    //        break;
+                    //    default:
+                    //        console.WriteLine("Unexpected Error during algorithm calculation: Exiting Program.");
+                    //        break;
+                    //}
 
                 } while (!Console.KeyAvailable);
 

@@ -33,39 +33,12 @@ namespace Zmod4410evz.Interop
     [StructLayout(LayoutKind.Sequential)]
     internal struct Zmod4xxxDevice
     {
-        public Zmod4xxxDevice(byte address, Zmod4xxxI2c read, Zmod4xxxI2c write, Zmod4xxxDelay delay)
-        {
-            Configuration = new byte[Zmod44xxConstants.ConfigurationLength];
-            Delay = delay;
-            I2cAddr = address;
-            InitConfiguration = Zmod4xxxConfiguration.CreateInitConfiguration();
-            MeasurementConfiguration = Zmod4xxxConfiguration.CreateMeasurementConfiguration();
-            MoxEr = 0;
-            MoxLr = 0;
-            Pid = Zmod44xxConstants.Pid;
-            ProductionData = new byte[Zmod44xxConstants.ProductionDataLength];
-            I2cRead = read;
-            I2cWrite = write;
-        }
-
-        /// <summary>
-        ///
-        /// </summary>
-        /// <param name="Address"></param>
-        /// <param name="RegAddress"></param>
-        /// <param name="DataBuffer"></param>
-        /// <param name="Length"></param>
-        /// <returns></returns>
         public delegate byte Zmod4xxxI2c(
             byte Address,
             Byte RegAddress,
             [Out, In, MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U1)] byte[] DataBuffer,
             Byte Length);
 
-        /// <summary>
-        ///
-        /// </summary>
-        /// <param name="ms"></param>
         public delegate void Zmod4xxxDelay(UInt32 ms);
 
         /// <summary>
@@ -76,8 +49,7 @@ namespace Zmod4410evz.Interop
         /// <summary>
         /// Configuration parameter set
         /// </summary>
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = Zmod44xxConstants.ConfigurationLength)]
-        public byte[] Configuration;
+        IntPtr Configuration;
 
         /// <summary>
         /// Sensor specific parameter
@@ -97,8 +69,7 @@ namespace Zmod4410evz.Interop
         /// <summary>
         /// Production data
         /// </summary>
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = Zmod44xxConstants.ProductionDataLength)]
-        public byte[] ProductionData;
+        public IntPtr ProductionData;
 
         /// <summary>
         /// i2c read function callback
@@ -124,33 +95,5 @@ namespace Zmod4410evz.Interop
         /// The measurement configuration
         /// </summary>
         public Zmod4xxxConfiguration MeasurementConfiguration;
-
-        internal void CalculateFactorMeasurementConfig(byte[] hsp)
-        {
-            CalculateFactor(MeasurementConfiguration, hsp);
-        }
-
-        internal void CalculateFactorInitConfig(byte[] hsp)
-        {
-            CalculateFactor(InitConfiguration, hsp);
-        }
-
-        private void CalculateFactor(Zmod4xxxConfiguration config, byte[] hsp)
-        {
-            short[] hsp_temp = new short[Zmod44xxConstants.HspLength];
-            float hspf;
-
-            for (int i = 0; i < config.h.Length; i += 2)
-            {
-                hsp_temp[i / 2] = ((short)
-                    ((config.h.Buffer[i] << 8) + config.h.Buffer[i + 1]));
-                hspf = (-((float)Configuration[2] * 256.0F + Configuration[3]) *
-                        ((Configuration[4] + 640.0F) * (Configuration[5] + hsp_temp[i / 2]) -
-                         512000.0F)) / 12288000.0F;
-
-                hsp[i] = (byte)((ushort)hspf >> 8);
-                hsp[i + 1] = (byte)((ushort)hspf & 0x00FF);
-            }
-        }
     }
 }
