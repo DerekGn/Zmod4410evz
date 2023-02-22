@@ -75,6 +75,18 @@ namespace Zmod4410evz.Commands
 
                     using IZmod4410 sensor = new Zmod4410((ILogger<IZmod4410>)_serviceProvider.GetService(typeof(ILogger<IZmod4410>)), device, Address);
 
+                    Console.WriteLine("Reading Sensor Information");
+
+                    sensor.GetInformation();
+
+                    Console.WriteLine($"Sensor tracking number: [{Convert.ToHexString(sensor.GetTrackingNumber().ToArray())}]");
+
+                    Console.WriteLine($"Sensor trimming data: [{Convert.ToHexString(sensor.ProductionData.ToArray())}]");
+
+                    Console.WriteLine("Preparing Sensor");
+
+                    sensor.PrepareSensor();
+
                     result = action(sensor);
                 }
                 else

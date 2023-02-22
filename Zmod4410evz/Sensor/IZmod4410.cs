@@ -96,11 +96,17 @@ namespace Zmod4410evz.Sensor
         /// </summary>
         void PrepareSensor();
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
         IReadOnlyList<byte> ReadAdc();
 
         /// <summary>
         /// Start a measurement
         /// </summary>
         void StartMeasurement();
+
+        Zmod4xxxDevice ToMarshalType();
     }
 }

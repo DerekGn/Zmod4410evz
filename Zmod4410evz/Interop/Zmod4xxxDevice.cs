@@ -22,8 +22,8 @@
 * SOFTWARE.
 */
 
+using Microsoft.Extensions.Configuration;
 using System.Runtime.InteropServices;
-using Zmod4410evz.Sensor;
 
 namespace Zmod4410evz.Interop
 {
@@ -31,8 +31,49 @@ namespace Zmod4410evz.Interop
     /// Device structure ZMOD4xxx
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    internal struct Zmod4xxxDevice
+    internal struct Zmod4xxxDevice : IDisposable
     {
+        private GCHandle _gchConfiguration;
+        private GCHandle _gchProductionData;
+        private GCHandle _gchInitConfiguration;
+        private GCHandle _gchMeasurementConfiguration;
+
+        public Zmod4xxxDevice(
+            byte i2cAddress,
+            byte[] configuration,
+            ushort moxEr,
+            ushort moxLr,
+            ushort pid,
+            byte[] productionData,
+            Zmod4xxxI2c i2cRead,
+            Zmod4xxxI2c i2cWrite,
+            Zmod4xxxDelay delay,
+            Zmod4xxxConfiguration initConfiguration,
+            Zmod4xxxConfiguration measurementConfiguration)
+        {
+            I2cAddr = i2cAddress;
+
+            _gchConfiguration = GCHandle.Alloc(configuration);
+            Configuration = GCHandle.ToIntPtr(_gchConfiguration);
+
+            MoxEr = moxEr;
+            MoxLr = moxLr;
+            Pid = pid;
+
+            _gchProductionData = GCHandle.Alloc(productionData);
+            ProductionData = GCHandle.ToIntPtr(_gchProductionData);
+
+            I2cRead = i2cRead;
+            I2cWrite = i2cWrite;
+            Delay = delay;
+
+            _gchInitConfiguration = GCHandle.Alloc(initConfiguration);
+            InitConfiguration = GCHandle.ToIntPtr(_gchProductionData);
+
+            _gchMeasurementConfiguration = GCHandle.Alloc(measurementConfiguration);
+            MeasurementConfiguration = GCHandle.ToIntPtr(_gchMeasurementConfiguration);
+        }
+
         public delegate byte Zmod4xxxI2c(
             byte Address,
             Byte RegAddress,
@@ -89,11 +130,26 @@ namespace Zmod4410evz.Interop
         /// <summary>
         /// The init configuration
         /// </summary>
-        public Zmod4xxxConfiguration InitConfiguration;
+        public IntPtr InitConfiguration;
 
         /// <summary>
         /// The measurement configuration
         /// </summary>
-        public Zmod4xxxConfiguration MeasurementConfiguration;
+        public IntPtr MeasurementConfiguration;
+
+        public void Dispose()
+        {
+            if (Configuration != IntPtr.Zero)
+            {
+                _gchConfiguration.Free();
+                Configuration = IntPtr.Zero;
+            }
+
+            if (ProductionData != IntPtr.Zero)
+            {
+                _gchProductionData.Free();
+                ProductionData = IntPtr.Zero;
+            }
+        }
     }
 }

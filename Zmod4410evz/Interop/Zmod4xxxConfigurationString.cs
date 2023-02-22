@@ -30,10 +30,30 @@ namespace Zmod4410evz.Interop
     /// A single data set for the configuration
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    internal struct Zmod4xxxConfigurationString
+    internal struct Zmod4xxxConfigurationString : IDisposable
     {
+        private GCHandle _gchBuffer;
+
+        public Zmod4xxxConfigurationString(byte address, byte length, byte[] buffer)
+        {
+            Address = address;
+            Length = length;
+            _gchBuffer = GCHandle.Alloc(buffer);
+
+            Buffer = GCHandle.ToIntPtr(_gchBuffer);
+        }
+
         public byte Address;
         public byte Length;
         public IntPtr Buffer;
+
+        public void Dispose()
+        {
+            if(Buffer != IntPtr.Zero)
+            {
+                _gchBuffer.Free();
+                Buffer = IntPtr.Zero;
+            }
+        }
     }
 }

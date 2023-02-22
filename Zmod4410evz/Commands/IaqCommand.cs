@@ -23,6 +23,7 @@
 */
 
 using McMaster.Extensions.CommandLineUtils;
+using System.Runtime.InteropServices;
 using Zmod4410evz.Interop;
 using Zmod4410evz.Sensor;
 
@@ -42,112 +43,104 @@ namespace Zmod4410evz.Commands
         {
             return ExecuteCommand((sensor) =>
             {
-                console.WriteLine("Reading Sensor Information");
-
-                sensor.GetInformation();
-
-                console.WriteLine("Reading Sensor Tracking Information");
-
-                var trackingNumber = sensor.GetTrackingNumber();
-
-                console.WriteLine($"Sensor tracking number: [{Convert.ToHexString(trackingNumber.ToArray())}]");
-
-                console.WriteLine($"Sensor trimming data: [{Convert.ToHexString(sensor.ProductionData.ToArray())}]");
-
-                Console.WriteLine("Preparing Sensor");
-
-                sensor.PrepareSensor();
-
-#warning todo init
                 IaqHandle algoHandle = new()
                 {
                     LogRcda = new float[9]
                 };
 
-                IaqResults algoResults = new();
-                IaqInputs algoInput = new();
+                IaqResults algoResults = new()
+                {
+                    Rmox = new float[13]
+                };
+
+                IaqInputs algoInput = new()
+                {
+                    HumidityPct = 50.0f,
+                    TemperatureDegc = 20.0f
+                };
 
                 var result = Iaq.Init(ref algoHandle);
 
-                if(result != IaqError.OK)
+                if (result != IaqError.OK)
                 {
                     console.Error.WriteLine("Library Initialise failed");
                 }
-
-                console.WriteLine($"Starting Measurement Loop. Sensor Read every {Interval / 1000} Seconds");
-
-                do
+                else
                 {
-                    sensor.StartMeasurement();
+                    console.WriteLine($"Starting Measurement Loop. Sensor Read every [{Interval / 1000}] Seconds. Press any key to exit");
 
-                    Thread.Sleep(Interval);
-
-                    var status = sensor.GetStatus();
-
-                    ErrorEvent errorEvent;
-
-                    if((status & Zmod4410Status.SequencerRunningMask) == Zmod4410Status.SequencerRunningMask)
+                    do
                     {
-                        console.WriteLine("Sequencer still running");
+                        sensor.StartMeasurement();
 
-                        errorEvent = sensor.GetErrorEvent();
-#warning TODO handle error
-                        switch (errorEvent)
+                        Thread.Sleep(Interval);
+
+                        var status = sensor.GetStatus();
+
+                        ErrorEvent errorEvent;
+
+                        if ((status & Zmod4410Status.SequencerRunningMask) == Zmod4410Status.SequencerRunningMask)
                         {
-                            case ErrorEvent.None:
+                            console.WriteLine("Sequencer still running");
+
+                            errorEvent = sensor.GetErrorEvent();
+#warning TODO handle error
+                            switch (errorEvent)
+                            {
+                                case ErrorEvent.None:
+                                    break;
+                                case ErrorEvent.PowerOn:
+                                    break;
+                                case ErrorEvent.AccessConflict:
+                                    break;
+                                default:
+                                    break;
+                            }
+                        }
+
+                        console.WriteLine("Reading Adc");
+
+                        var adc = sensor.ReadAdc();
+
+                        algoInput.AssignAdcResult(adc.ToArray());
+
+#warning TODO handle error
+                        //errorEvent = sensor.GetErrorEvent();
+
+                        Zmod4xxxDevice device = sensor.ToMarshalType();                        
+
+                        result = Iaq.Calc(ref algoHandle, ref device, ref algoInput, ref algoResults);
+
+                        console.WriteLine("*********** Measurements ***********");
+                        for (int i = 0; i < 13; i++)
+                        {
+                            console.WriteLine($" Rmox[{i}] = {algoResults.Rmox[i] / 1e3} kOhm", i);
+                        }
+                        console.WriteLine($" Rcda = {(Math.Pow(10, algoResults.LogRcda) / 1e3)} kOhm");
+                        console.WriteLine($" EtOH = {algoResults.Etoh} ppm");
+                        console.WriteLine($" TVOC = {algoResults.Tvoc} mg/m^3");
+                        console.WriteLine($" eCO2 = {algoResults.Eco2} ppm");
+                        console.WriteLine($" IAQ  = {algoResults.Iaq}");
+
+                        /* Check validity of the algorithm results. */
+                        switch (result)
+                        {
+                            case IaqError.Stabilization:
+                                console.WriteLine("Warm-Up!");
                                 break;
-                            case ErrorEvent.PowerOn:
+                            case IaqError.OK:
+                                console.WriteLine("Valid!");
                                 break;
-                            case ErrorEvent.AccessConflict:
+                            case IaqError.Damage:
+                                console.WriteLine("Error: Sensor probably damaged. Algorithm results may be incorrect.");
                                 break;
                             default:
+                                console.WriteLine("Unexpected Error during algorithm calculation: Exiting Program.");
                                 break;
                         }
-                    }
 
-                    console.WriteLine("Reading Adc");
-
-                    algoInput.AdcResult = sensor.ReadAdc().ToArray();
-
-#warning TODO handle error
-                    //errorEvent = sensor.GetErrorEvent();
-
-                    //algoInput.HumidityPct = 50.0f;
-                    //algoInput.TemperatureDegc = 20.0f;
-
-                    ////var device = sensor.GetDevice();
-
-                    ////result = Iaq.Calc(ref algoHandle, ref device, ref algoInput, ref algoResults);
-
-                    //console.WriteLine("*********** Measurements ***********");
-                    //for (int i = 0; i < 13; i++)
-                    //{
-                    //    console.WriteLine($" Rmox[{i}] = {algoResults.Rmox[i] / 1e3} kOhm", i);
-                    //}
-                    //console.WriteLine($" Rcda = {(Math.Pow(10, algoResults.LogRcda) / 1e3)} kOhm");
-                    //console.WriteLine($" EtOH = {algoResults.Etoh} ppm");
-                    //console.WriteLine($" TVOC = {algoResults.Tvoc} mg/m^3");
-                    //console.WriteLine($" eCO2 = {algoResults.Eco2} ppm");
-                    //console.WriteLine($" IAQ  = {algoResults.Iaq}");
-
-                    ///* Check validity of the algorithm results. */
-                    //switch (result)
-                    //{
-                    //    case IaqError.Stabilization:
-                    //        console.WriteLine("Warm-Up!");
-                    //        break;
-                    //    case IaqError.OK:
-                    //        console.WriteLine("Valid!");
-                    //        break;
-                    //    case IaqError.Damage:
-                    //        console.WriteLine("Error: Sensor probably damaged. Algorithm results may be incorrect.");
-                    //        break;
-                    //    default:
-                    //        console.WriteLine("Unexpected Error during algorithm calculation: Exiting Program.");
-                    //        break;
-                    //}
-
-                } while (!Console.KeyAvailable);
+                    } while (!Console.KeyAvailable);
+                }
 
                 return 0;
             });

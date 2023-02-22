@@ -22,6 +22,8 @@
 * SOFTWARE.
 */
 
+using Zmod4410evz.Interop;
+
 namespace Zmod4410evz.Sensor
 {
     internal class Zmod4410Configuration
@@ -51,5 +53,34 @@ namespace Zmod4410evz.Sensor
         public Zmod4410ConfigurationString R { get; }
         public Zmod4410ConfigurationString S { get; }
         public byte Start;
+
+        internal Zmod4xxxConfiguration ToMarshalType()
+        {
+            return new()
+            {
+                Start = Start,
+                ProdDataLength = ProductDataLength,
+                d = new Zmod4xxxConfigurationString(
+                    D.Address,
+                    (byte)D.Buffer.Count,
+                    D.Buffer.ToArray()),
+                h = new Zmod4xxxConfigurationString(
+                    H.Address,
+                    (byte)H.Buffer.Count,
+                    H.Buffer.ToArray()),
+                m = new Zmod4xxxConfigurationString(
+                    M.Address,
+                    (byte)M.Buffer.Count,
+                    M.Buffer.ToArray()),
+                r = new Zmod4xxxConfigurationString(
+                    R.Address,
+                    (byte)R.Buffer.Count,
+                    R.Buffer.ToArray()),
+                s = new Zmod4xxxConfigurationString(
+                    S.Address,
+                    (byte)S.Buffer.Count,
+                    S.Buffer.ToArray())
+            };
+        }
     }
 }

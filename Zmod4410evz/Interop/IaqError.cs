@@ -32,7 +32,7 @@ namespace Zmod4410evz.Interop
         /// <summary>
         /// No error
         /// </summary>
-        OK =0,
+        OK = 0,
         /// <summary>
         /// Sensor in stabilization
         /// </summary>

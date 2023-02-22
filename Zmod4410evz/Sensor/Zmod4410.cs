@@ -24,6 +24,7 @@
 
 using MCP2221IO;
 using Microsoft.Extensions.Logging;
+using Zmod4410evz.Interop;
 using Zmod4410evz.Sensor.Exceptions;
 
 namespace Zmod4410evz.Sensor
@@ -32,10 +33,10 @@ namespace Zmod4410evz.Sensor
     {
         private readonly byte _address;
         private readonly List<byte> _configuration;
-        private readonly ILogger<IZmod4410> _logger;
-        private readonly List<byte> _productionData;
         private readonly Zmod4410Configuration _initConfiguration;
+        private readonly ILogger<IZmod4410> _logger;
         private readonly Zmod4410Configuration _measurementConfiguration;
+        private readonly List<byte> _productionData;
         private IDevice _device;
         private ushort _moxEr = 0;
         private ushort _moxLr = 0;
@@ -123,8 +124,8 @@ namespace Zmod4410evz.Sensor
 
         public void GetInformation()
         {
-            byte status = 0;
             ushort count = 0;
+            byte status;
 
             do
             {
@@ -217,7 +218,6 @@ namespace Zmod4410evz.Sensor
 
             return buffer;
         }
-
         public void StartMeasurement()
         {
             I2cWrite(
@@ -225,14 +225,21 @@ namespace Zmod4410evz.Sensor
                 Zmod44xxI2cRegisters.AddressCommand,
                 new byte[] { _measurementConfiguration.Start }, 1);
         }
-        internal void CalculateFactorInitConfig(byte[] hsp)
-        {
-            CalculateFactor(_initConfiguration, hsp);
-        }
 
-        internal void CalculateFactorMeasurementConfig(byte[] hsp)
+        public Zmod4xxxDevice ToMarshalType()
         {
-            CalculateFactor(_measurementConfiguration, hsp);
+            return new(
+                _address,
+                _configuration.ToArray(),
+                _moxEr,
+                _moxLr,
+                Pid,
+                _productionData.ToArray(),
+                new Zmod4xxxDevice.Zmod4xxxI2c(I2cRead),
+                new Zmod4xxxDevice.Zmod4xxxI2c(I2cWrite),
+                new Zmod4xxxDevice.Zmod4xxxDelay(Delay),
+                _initConfiguration.ToMarshalType(),
+                _measurementConfiguration.ToMarshalType());
         }
 
         private void CalculateFactor(Zmod4410Configuration config, byte[] hsp)
@@ -253,6 +260,15 @@ namespace Zmod4410evz.Sensor
             }
         }
 
+        private void CalculateFactorInitConfig(byte[] hsp)
+        {
+            CalculateFactor(_initConfiguration, hsp);
+        }
+
+        private void CalculateFactorMeasurementConfig(byte[] hsp)
+        {
+            CalculateFactor(_measurementConfiguration, hsp);
+        }
         private void Delay(uint delay)
         {
             _logger.LogDebug("Executing Delay: {Delay}", delay);
@@ -364,34 +380,33 @@ namespace Zmod4410evz.Sensor
                 configuration.S.Buffer.ToArray(),
                 configuration.S.Length);
         }
-    
+
         #region Dispose
 
-    private bool disposedValue;
+        private bool disposedValue;
 
-    public void Dispose()
-    {
-        // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-        Dispose(disposing: true);
-        GC.SuppressFinalize(this);
-    }
-
-    protected virtual void Dispose(bool disposing)
-    {
-        _logger.LogDebug($"Disposing {nameof(Zmod4410)}");
-
-        if (!disposedValue)
+        public void Dispose()
         {
-            if (disposing)
-            {
-                _device = null;
-            }
-
-            disposedValue = true;
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
-    }
 
+        protected virtual void Dispose(bool disposing)
+        {
+            _logger.LogDebug($"Disposing {nameof(Zmod4410)}");
 
-    #endregion Dispose
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    _device = null;
+                }
+
+                disposedValue = true;
+            }
+        }
+
+        #endregion Dispose
     }
 }

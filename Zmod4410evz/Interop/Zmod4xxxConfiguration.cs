@@ -23,7 +23,6 @@
 */
 
 using System.Runtime.InteropServices;
-using Zmod4410evz.Sensor;
 
 namespace Zmod4410evz.Interop
 {

@@ -2,7 +2,8 @@
   "profiles": {
     "Zmod4410evz": {
       "commandName": "Project",
-      "commandLineArgs": "iaq"
+      "commandLineArgs": "iaq",
+      "nativeDebugging": true
     }
   }
 }

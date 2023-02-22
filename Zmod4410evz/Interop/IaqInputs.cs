@@ -27,13 +27,14 @@ using System.Runtime.InteropServices;
 namespace Zmod4410evz
 {
     [StructLayout(LayoutKind.Sequential)]
-    internal struct IaqInputs
+    internal struct IaqInputs : IDisposable
     {
+        private GCHandle _gch;
+
         /// <summary>
         /// Sensor raw values
         /// </summary>
-        [MarshalAs(UnmanagedType.LPArray)]
-        public Byte[] AdcResult;
+        public IntPtr AdcResult;
         /// <summary>
         /// Relative Humditiy in percentage
         /// </summary>
@@ -42,5 +43,28 @@ namespace Zmod4410evz
         /// Ambient Temperature in C
         /// </summary>
         public float TemperatureDegc;
+
+        public void AssignAdcResult(byte[] adcResult)
+        {
+            ReleaseAdcResult();
+
+            _gch = GCHandle.Alloc(adcResult);
+
+            AdcResult = GCHandle.ToIntPtr(_gch);
+        }
+
+        public void Dispose()
+        {
+            ReleaseAdcResult();
+        }
+
+        private void ReleaseAdcResult()
+        {
+            if (AdcResult != IntPtr.Zero)
+            {
+                _gch.Free();
+                AdcResult = IntPtr.Zero;
+            }
+        }
     }
 }
