@@ -24,6 +24,7 @@
 
 using MCP2221IO;
 using Microsoft.Extensions.Logging;
+using System;
 using Zmod4410evz.Interop;
 using Zmod4410evz.Sensor.Exceptions;
 
@@ -113,6 +114,13 @@ namespace Zmod4410evz.Sensor
         public ushort Pid => Zmod44xxConstants.Pid;
 
         public IReadOnlyList<byte> ProductionData => _productionData;
+        public float CalculateRmox()
+        {
+            var adcResult = ReadAdc();
+
+            return CalculateRmox(adcResult);
+        }
+
         public ErrorEvent GetErrorEvent()
         {
             var buffer = new byte[1];
@@ -218,6 +226,7 @@ namespace Zmod4410evz.Sensor
 
             return buffer;
         }
+
         public void StartMeasurement()
         {
             I2cWrite(
@@ -269,6 +278,42 @@ namespace Zmod4410evz.Sensor
         {
             CalculateFactor(_measurementConfiguration, hsp);
         }
+
+        unsafe private float CalculateRmox(IReadOnlyList<byte> adcResult)
+        {
+            int i;
+            ushort adc_value = 0;
+            float result;
+            float* p = &result;
+            float rmox_local = 0;
+
+            for (i = 0; i < _measurementConfiguration.R.Length; i += 2)
+            {
+                adc_value = (ushort)(adcResult[i] << 8);
+                adc_value |= adcResult[i + 1];
+                if (0.0 > (adc_value - _moxLr))
+                {
+                    *p = 1e-3f;
+                    p++;
+                }
+                else if (0.0 >= (_moxEr - adc_value))
+                {
+                    *p = 10e9f;
+                    p++;
+                }
+                else
+                {
+                    rmox_local = (float)(_configuration[0] * 1e3 *
+                                 (float)(adc_value - _moxLr) /
+                                 (float)(_moxEr - adc_value));
+                    *p = rmox_local;
+                    p++;
+                }
+            }
+
+            return result;
+        }
+
         private void Delay(uint delay)
         {
             _logger.LogDebug("Executing Delay: {Delay}", delay);

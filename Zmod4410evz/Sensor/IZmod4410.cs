@@ -65,6 +65,8 @@ namespace Zmod4410evz.Sensor
 
         IReadOnlyList<byte> ProductionData { get; }
 
+        float CalculateRmox();
+
         /// <summary>
         /// 
         /// </summary>
