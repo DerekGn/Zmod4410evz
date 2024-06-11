@@ -24,21 +24,22 @@
 
 namespace Zmod4410evz.Sensor.Exceptions
 {
-
     [Serializable]
-	public class Zmod4410Exception : Exception
-	{
-		public Zmod4410Exception(Zmod4xxxError errorCode) : this(errorCode, String.Empty) { }
-		public Zmod4410Exception(Zmod4xxxError errorCode, string message) : this(errorCode, message, null) { }
-		public Zmod4410Exception(Zmod4xxxError errorCode, string message, Exception inner) : base(message, inner) 
-		{
-			ErrorCode = errorCode;
-		}
-		protected Zmod4410Exception(
-		  System.Runtime.Serialization.SerializationInfo info,
-		  System.Runtime.Serialization.StreamingContext context) : base(info, context) { }
+    public class Zmod4410Exception : Exception
+    {
+        public Zmod4410Exception(Zmod4xxxError errorCode) : this(errorCode, String.Empty)
+        {
+        }
 
-		public Zmod4xxxError ErrorCode { get; private set; }
+        public Zmod4410Exception(Zmod4xxxError errorCode, string message) : this(errorCode, message, null)
+        {
+        }
 
-	}
+        public Zmod4410Exception(Zmod4xxxError errorCode, string message, Exception inner) : base(message, inner)
+        {
+            ErrorCode = errorCode;
+        }
+
+        public Zmod4xxxError ErrorCode { get; private set; }
+    }
 }
